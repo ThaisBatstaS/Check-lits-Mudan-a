@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Checklist da Mudança</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .progress-transition { transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .card-shadow { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025); }
+        .checkbox-wrapper input:checked + div { background-color: #0ea5e9; border-color: #0ea5e9; }
+        .checkbox-wrapper input:checked + div svg { display: block; }
+        .item-done { text-decoration: line-through; color: #94a3b8; }
+        .modal-open { overflow: hidden; }
+    </style>
+</head>
+<body class="pb-24 text-slate-800">
+
+    <!-- Header Fixo -->
+    <header class="fixed top-0 w-full glass-header z-40 border-b border-slate-200 shadow-sm">
+        <div class="max-w-3xl mx-auto p-4">
+            <div class="flex justify-between items-center mb-3">
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-indigo-500">
+                    🚀 Mudança Smart
+                </h1>
+                <div class="flex items-center gap-3">
+                    <span id="global-percentage" class="text-lg font-bold text-sky-600">0%</span>
+                    <button onclick="toggleModal()" class="bg-slate-100 p-2 rounded-full hover:bg-slate-200 transition" title="Sincronizar">
+                        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-2">
+                <div id="global-progress" class="bg-gradient-to-r from-sky-400 to-indigo-500 h-2 rounded-full progress-transition" style="width: 0%"></div>
+            </div>
+            <p class="text-xs text-slate-500 mt-2 text-center font-medium" id="global-status">Calculando progresso...</p>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <main class="max-w-3xl mx-auto mt-32 p-4 space-y-6" id="app-container"></main>
+
+    <!-- Modal de Sincronização -->
+    <div id="sync-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 card-shadow transform scale-95 transition-transform duration-300" id="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800">🔄 Sincronizar Dados</h3>
+                <button onclick="toggleModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p class="text-sm text-slate-600 mb-2">1. Envie seu progresso para o parceiro(a):</p>
+                    <button onclick="exportData()" class="w-full bg-sky-500 text-white font-semibold py-2 rounded-lg hover:bg-sky-600 transition">Copiar Meu Código</button>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <p class="text-sm text-slate-600 mb-2">2. Cole o código que recebeu:</p>
+                    <input type="text" id="import-code" placeholder="Cole o código aqui..." class="w-full p-2 border border-slate-300 rounded-lg mb-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none">
+                    <button onclick="importData()" class="w-full bg-indigo-500 text-white font-semibold py-2 rounded-lg hover:bg-indigo-600 transition">Atualizar Progresso</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados Iniciais
+        const defaultData = [
+            { id: 'c1', title: '📅 1. Planejamento', items: [{ id: 'i1', text: 'Definir data da mudança', done: false }, { id: 'i2', text: 'Definir orçamento da mudança', done: false }, { id: 'i3', text: 'Criar cronograma das atividades', done: false }, { id: 'i4', text: 'Confirmar entrega das chaves', done: false }] },
+            { id: 'c2', title: '💰 2. Desapego e organização', items: [{ id: 'i5', text: 'Definir itens que serão vendidos', done: false }, { id: 'i6', text: 'Definir itens que serão doados', done: false }, { id: 'i7', text: 'Definir itens para descarte', done: false }, { id: 'i8', text: 'Anunciar itens para venda', done: false }, { id: 'i9', text: 'Agendar retirada dos itens', done: false }] },
+            { id: 'c3', title: '🛒 3. Compras', items: [{ id: 'i10', text: 'Levantar itens que já possuímos', done: false }, { id: 'i11', text: 'Listar itens que precisam ser comprados', done: false }, { id: 'i12', text: 'Priorizar compras essenciais', done: false }, { id: 'i13', text: 'Definir orçamento das compras', done: false }] },
+            { id: 'c4', title: '📦 4. Organização da mudança', items: [{ id: 'i14', text: 'Contratar empresa de mudança', done: false }, { id: 'i15', text: 'Comprar materiais para embalagem', done: false }, { id: 'i16', text: 'Separar pertences por cômodo', done: false }, { id: 'i17', text: 'Identificar todas as caixas', done: false }, { id: 'i18', text: 'Preparar caixa de itens essenciais', done: false }] },
+            { id: 'c5', title: '🧹 5. Apartamento atual', items: [{ id: 'i19', text: 'Separar todos os pertences', done: false }, { id: 'i20', text: 'Realizar limpeza geral', done: false }, { id: 'i21', text: 'Realizar pequenos reparos', done: false }, { id: 'i22', text: 'Cancelar serviços vinculados ao imóvel', done: false }, { id: 'i23', text: 'Registrar fotos antes da entrega', done: false }, { id: 'i24', text: 'Entregar as chaves', done: false }] },
+            { id: 'c6', title: '🏠 6. Apartamento novo', items: [{ id: 'i25', text: 'Realizar limpeza antes da mudança', done: false }, { id: 'i26', text: 'Conferir funcionamento das instalações', done: false }, { id: 'i27', text: 'Verificar necessidade de pequenos ajustes', done: false }, { id: 'i28', text: 'Registrar estado do imóvel', done: false }, { id: 'i29', text: 'Organizar ambientes prioritários', done: false }] },
+            { id: 'c7', title: '⚡ 7. Transferência de serviços', items: [{ id: 'i30', text: 'Transferir energia', done: false }, { id: 'i31', text: 'Transferir água', done: false }, { id: 'i32', text: 'Transferir IPTU', done: false }, { id: 'i33', text: 'Atualizar condomínio', done: false }, { id: 'i34', text: 'Transferir gás', done: false }, { id: 'i35', text: 'Solicitar instalação da internet', done: false }] },
+            { id: 'c8', title: '🔧 8. Instalações', items: [{ id: 'i36', text: 'Instalar internet', done: false }, { id: 'i37', text: 'Instalar eletrodomésticos', done: false }, { id: 'i38', text: 'Montar móveis', done: false }, { id: 'i39', text: 'Instalar cortinas/persianas', done: false }, { id: 'i40', text: 'Instalar equipamentos adicionais', done: false }] },
+            { id: 'c9', title: '📌 9. Pendências esquecidas', items: [{ id: 'i41', text: 'Agendar elevador de mudança', done: false }, { id: 'i42', text: 'Trocar segredo da fechadura', done: false }, { id: 'i43', text: 'Fazer leitura dos medidores', done: false }, { id: 'i44', text: 'Separar ferramentas para montagem', done: false }, { id: 'i45', text: 'Separar documentos importantes', done: false }, { id: 'i46', text: 'Preparar mochila para o dia', done: false }, { id: 'i47', text: 'Conferir regras do condomínio', done: false }] },
+            { id: 'c10', title: '📍 10. Atualização de endereço', items: [{ id: 'i48', text: 'Bancos', done: false }, { id: 'i49', text: 'Empresa', done: false }, { id: 'i50', text: 'Plano de saúde', done: false }, { id: 'i51', text: 'DETRAN/CNH', done: false }, { id: 'i52', text: 'Compras e assinaturas online', done: false }, { id: 'i53', text: 'Correspondências', done: false }] },
+            { id: 'c11', title: '🚚 11. Dia da mudança', items: [{ id: 'i54', text: 'Conferir carregamento', done: false }, { id: 'i55', text: 'Acompanhar descarregamento', done: false }, { id: 'i56', text: 'Conferir se todos os itens chegaram', done: false }, { id: 'i57', text: 'Organizar os itens essenciais', done: false }] },
+            { id: 'c12', title: '❤️ 12. Após a mudança', items: [{ id: 'i58', text: 'Organizar os cômodos', done: false }, { id: 'i59', text: 'Guardar documentos do imóvel', done: false }, { id: 'i60', text: 'Conferir pendências', done: false }, { id: 'i61', text: 'Ajustar detalhes finais', done: false }, { id: 'i62', text: 'Comemorar a nova conquista', done: false }] }
+        ];
+
+        let appData = JSON.parse(localStorage.getItem('mudancaApp')) || defaultData;
+
+        function saveData() {
+            localStorage.setItem('mudancaApp', JSON.stringify(appData));
+            updateProgress();
+        }
+
+        function toggleItem(categoryId, itemId) {
+            const category = appData.find(c => c.id === categoryId);
+            const item = category.items.find(i => i.id === itemId);
+            item.done = !item.done;
+            
+            const textEl = document.getElementById(`text-${itemId}`);
+            item.done ? textEl.classList.add('item-done') : textEl.classList.remove('item-done');
+            saveData();
+        }
+
+        function updateProgress() {
+            let totalItems = 0, totalDone = 0;
+
+            appData.forEach(category => {
+                const catTotal = category.items.length;
+                const catDone = category.items.filter(i => i.done).length;
+                totalItems += catTotal; totalDone += catDone;
+
+                const catPercentage = Math.round((catDone / catTotal) * 100);
+                document.getElementById(`prog-${category.id}`).style.width = `${catPercentage}%`;
+                document.getElementById(`perc-${category.id}`).innerText = `${catPercentage}%`;
+                
+                const headerEl = document.getElementById(`header-${category.id}`);
+                catPercentage === 100 ? headerEl.classList.add('bg-sky-50') : headerEl.classList.remove('bg-sky-50');
+            });
+
+            const globalPercentage = Math.round((totalDone / totalItems) * 100);
+            document.getElementById('global-progress').style.width = `${globalPercentage}%`;
+            document.getElementById('global-percentage').innerText = `${globalPercentage}%`;
+            document.getElementById('global-status').innerText = globalPercentage === 100 
+                ? "🎉 Parabéns! Mudança concluída com sucesso! 🎉" 
+                : `${totalDone} de ${totalItems} tarefas concluídas`;
+        }
+
+        function renderApp() {
+            const container = document.getElementById('app-container');
+            container.innerHTML = '';
+
+            appData.forEach(category => {
+                const catPercentage = Math.round((category.items.filter(i => i.done).length / category.items.length) * 100);
+
+                let itemsHtml = category.items.map(item => `
+                    <label class="flex items-center p-3.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors checkbox-wrapper border-b border-slate-100 last:border-0">
+                        <input type="checkbox" class="hidden" ${item.done ? 'checked' : ''} onchange="toggleItem('${category.id}', '${item.id}')">
+                        <div class="w-6 h-6 rounded-md border-2 border-slate-300 flex items-center justify-center mr-4 transition-colors shadow-sm">
+                            <svg class="w-4 h-4 text-white hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <span id="text-${item.id}" class="text-slate-700 font-medium text-sm sm:text-base ${item.done ? 'item-done' : ''}">${item.text}</span>
+                    </label>
+                `).join('');
+
+                container.innerHTML += `
+                    <div class="bg-white rounded-2xl card-shadow overflow-hidden border border-slate-100">
+                        <div id="header-${category.id}" class="p-4 border-b border-slate-100 transition-colors ${catPercentage === 100 ? 'bg-sky-50' : ''}">
+                            <div class="flex justify-between items-center mb-3">
+                                <h2 class="text-base sm:text-lg font-bold text-slate-800">${category.title}</h2>
+                                <span id="perc-${category.id}" class="text-sm font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded-md">${catPercentage}%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                <div id="prog-${category.id}" class="bg-indigo-400 h-1.5 rounded-full progress-transition" style="width: ${catPercentage}%"></div>
+                            </div>
+                        </div>
+                        <div class="p-1">${itemsHtml}</div>
+                    </div>
+                `;
+            });
+            updateProgress();
+        }
+
+        // Funções do Modal e Sincronização
+        const modal = document.getElementById('sync-modal');
+        const modalContent = document.getElementById('modal-content');
+
+        function toggleModal() {
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    modalContent.classList.remove('scale-95');
+                }, 10);
+                document.body.classList.add('modal-open');
+            } else {
+                modal.classList.add('opacity-0');
+                modalContent.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+                document.body.classList.remove('modal-open');
+            }
+        }
+
+        function exportData() {
+            const code = btoa(JSON.stringify(appData)); // Criptografa em Base64
+            navigator.clipboard.writeText(code).then(() => {
+                alert("✅ Código copiado! Envie para seu parceiro(a) no WhatsApp.");
+            });
+        }
+
+        function importData() {
+            const code = document.getElementById('import-code').value;
+            try {
+                const newData = JSON.parse(atob(code));
+                appData = newData;
+                saveData();
+                renderApp();
+                toggleModal();
+                document.getElementById('import-code').value = '';
+                alert("✨ Progresso atualizado com sucesso!");
+            } catch (e) {
+                alert("❌ Código inválido. Tente novamente.");
+            }
+        }
+
+        renderApp();
+    </script>
+</body>
+</html>
